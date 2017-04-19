@@ -34,7 +34,7 @@ connection.query("SELECT * FROM products",
         }
         console.log("*******************************");
         for (var i = 0; i < res.length; i++) {
-            /////// FIX TO DISPLAY second '0'
+            /////// FIX TO DISPLAY second 0
             console.log("Item %s) %s - $%s",res[i].item_id,res[i].product_name,res[i].price);
         }
         console.log("*******************************");

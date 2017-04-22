@@ -1,0 +1,6 @@
+department_id,department_name,over_head_costs,total_sales
+1,Automotive,30000.00,0.00
+2,Books,5000.00,0.00
+3,Electronics,40000.00,0.00
+4,"Kitchen & Dining",20000.00,0.00
+5,"Pet Supplies",10000.00,0.00

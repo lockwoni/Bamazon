@@ -21,6 +21,9 @@ var userUnits;
 var userItem;
 var userTotal;
 var updatedStock;
+var updatedRev;
+var unitPrice;
+var prodDep;
 
 // Creating the properties for the prompt
 var schema = {
@@ -49,7 +52,6 @@ var userPrompt = function() {
         userUnits = result.units;
         userItem = result.ID;
 
-        console.log("\nOrder received:\n  ID: %s\n  Units: %s", userItem, userUnits);
         quantityCheck();
     });
 };
@@ -57,7 +59,7 @@ var userPrompt = function() {
 // Once the customer has placed the order, checking if the store has enough of the product to meet the customer's request
 var quantityCheck = function() {
     // Checking if the store has enough of the product to meet the customer's request
-    connection.query("SELECT stock_quantity, price FROM products WHERE ?", 
+    connection.query("SELECT stock_quantity, price, product_sales FROM products WHERE ?", 
         [{item_id: userItem}],
         function(err, res) {
             if (err) {
@@ -68,18 +70,28 @@ var quantityCheck = function() {
                 console.log("\n*******************************");
                 console.log("Insufficient quantity!");
                 console.log("*******************************\n");
+
+                userPrompt();
             }
             else {
-            // However, if your store does have enough of the product, you should fulfill the customer's order. This means updating the SQL database to reflect the remaining quantity.
+            // If store does have enough of the product, fulfilling the customer's order by updating the SQL database to reflect the remaining quantity
                 updateStock(res[0].stock_quantity, userUnits);
                 console.log("\nQuantity in stock: %s",res[0].stock_quantity);
+
+                console.log("\nOrder received:\n  ID: %s\n  Units: %s", userItem, userUnits);
 
                 // Once the update goes through, showing the customer the total cost of their purchase
                 userTotal = res[0].price * userUnits;
 
                 console.log("\n*******************************");
-                console.log("Total cost: $%s",userTotal);
+                console.log("Total cost: $%s",userTotal.toFixed(2));
                 console.log("*******************************\n");
+
+                // Updating the SQL database with new product revenue based on the sale
+                updateProdRev(res[0].product_sales, userTotal);
+                updateDepRev(userTotal);
+
+                userPrompt();
             };
         }
     );
@@ -100,6 +112,51 @@ var updateStock = function(stockQuantity, userUnits) {
     );
 };
 
+var updateProdRev = function(prodSales, userTotal) {
+    updatedRev = prodSales + userTotal;
+
+    connection.query("UPDATE products SET ? WHERE ?", [ 
+        {
+          product_sales: updatedRev
+        },
+        {
+          item_id: userItem
+        }], 
+        function(err, res) {
+        }
+    );
+};
+
+var updateDepRev = function(userTotal) {
+    connection.query("SELECT department_name FROM products WHERE ?", [{ item_id: userItem }], function(err, res) {
+        if (err) {
+            throw err;
+        }
+        // Pulling the department for the product the user selected 
+        prodDep = res[0].department_name;
+
+        connection.query("SELECT total_sales FROM departments WHERE ?",[{ department_name: prodDep }], function(err, res) {
+            if (err) {
+                throw err;
+            }
+            depSales = res[0].total_sales;
+
+            updatedDepRev = depSales + userTotal;
+
+            connection.query("UPDATE departments SET ? WHERE ?", [ 
+                {
+                  total_sales: updatedDepRev
+                },
+                {
+                  department_name: prodDep
+                }], 
+                function(err, res) {
+                }
+            );
+        });
+    });
+};
+
 
 /************************************************/
 // MAIN PROCESSES
@@ -117,8 +174,7 @@ connection.query("SELECT * FROM products",
         }
         console.log("*******************************");
         for (var i = 0; i < res.length; i++) {
-            /////// FIX TO DISPLAY second 0
-            console.log("ID# %s | %s | $%s",res[i].item_id,res[i].product_name,res[i].price);
+            console.log("ID# %s | %s | $%s",res[i].item_id,res[i].product_name,res[i].price.toFixed(2));
         }
         console.log("*******************************");
         userPrompt();

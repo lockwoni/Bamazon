@@ -2,6 +2,7 @@
 // Including the mySQL & inquirer npm packages
 var mysql = require("mysql");
 var inquirer = require("inquirer");
+//////// Take & submit screenshots of working code
 
 // Creating the connection information for the sql database
 var connection = mysql.createConnection({
@@ -19,6 +20,7 @@ var connection = mysql.createConnection({
 // Creating global variables
 var prodArr = [];
 var depArr = [];
+var stockQuant = 0;
 var addStock = 0;
 
 
@@ -65,8 +67,7 @@ var listInventory = function() {
         console.log("*******************************");
         console.log("Products for sale:");
         for (var i = 0; i < res.length; i++) {
-            /////// FIX TO DISPLAY second 0
-            console.log("ID# %s | %s | $%s | %s",res[i].item_id,res[i].product_name,res[i].price,res[i].stock_quantity);
+            console.log("ID# %s | %s | $%s | %s",res[i].item_id,res[i].product_name,res[i].price.toFixed(2),res[i].stock_quantity);
         }
         console.log("*******************************");
         // Calling the function to display the menu again
@@ -103,7 +104,7 @@ var addMorePrompt = function() {
             if (err) {
                 throw err;
             }
-	    	for (var i = 0; i < 15; i++) {
+	    	for (var i = 0; i < res.length; i++) {
 	    		prodArr.push(res[i].product_name);
 	    	};
 
@@ -120,9 +121,15 @@ var addMorePrompt = function() {
 				name: "orderQuant"
 			}
 		]).then(function(user) {
-	    	addStock = res[0].stock_quantity + parseInt(user.orderQuant);
+			// Pulling the stock quantity for the product the user selected
+			for (var i = 0; i < res.length; i++) {
+			    if (res[i].product_name === user.addMore) {  
+			      stockQuant = res[i].stock_quantity;
+			    }
+			};
+	    	addStock = stockQuant + parseInt(user.orderQuant);
 	    	console.log("add stock: " + addStock);
-
+	    	// Updating the stock quantity based on the user input
 		    connection.query("UPDATE products SET ? WHERE ?", [ 
 		        {
 		          stock_quantity: addStock
@@ -142,15 +149,15 @@ var addMorePrompt = function() {
 
 // Allowing the manager to add a completely new product to the store
 var newProd = function() {
-	connection.query("SELECT item_id, department_name FROM products", 
-        function(err, res) {
-            if (err) {
-                throw err;
-            }
-	    	for (var i = 0; i < math.Max(res.item_id) + 1; i++) {
-	    		depArr.push(res[i].department_name);
-	    	};
-	    	///// Figure out how to not display duplicate dep'ts
+	connection.query("SELECT DISTINCT department_name FROM products", 
+    function(err, res) {
+        if (err) {
+            throw err;
+        }
+        // Looping through and pushing unique departments in the products table to an array 
+	    for (var i = 0; i < res.length; i++) {
+			depArr.push(res[i].department_name);
+	    };
 		inquirer.prompt([
 			{
 				type: "input",
